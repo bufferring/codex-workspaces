@@ -1,0 +1,293 @@
+# UNEFA Codex - Sistema de Espacios de Trabajo Dockerizados con Code-Server
+
+![Versión](https://img.shields.io/badge/versión-2.0-blue.svg)
+![Shell](https://img.shields.io/badge/shell-bash-green.svg)
+![Licencia](https://img.shields.io/badge/licencia-MIT-orange.svg)
+![Plataforma](https://img.shields.io/badge/plataforma-ubuntu%2022.04-purple.svg)
+![Docker](https://img.shields.io/badge/docker-20.10+-2496ED.svg?logo=docker&logoColor=white)
+
+**Idiomas:** [🇬🇧 English](README.md) | [🇪🇸 Español](README.es.md)
+
+Un sistema listo para producción que ejecuta múltiples espacios de trabajo aislados de code-server usando Docker, Nginx y Tailscale.
+
+## 🏗️ Arquitectura
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      SISTEMA HOST                            │
+│                                                               │
+│  ┌──────────────┐         ┌─────────────────────────────┐   │
+│  │   Tailscale  │────────▶│          Nginx              │   │
+│  │    Funnel    │         │      (Puerto 80)            │   │
+│  │  (Público)   │         │                             │   │
+│  └──────────────┘         │  / → Página de Inicio       │   │
+│                           │  /user1/ → 127.0.0.1:8081   │   │
+│                           │  /user2/ → 127.0.0.1:8082   │   │
+│                           │  ...                         │   │
+│                           │  /user20/ → 127.0.0.1:8100  │   │
+│                           └─────────────────────────────┘   │
+│                                      │                       │
+│                                      ▼                       │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │      CONTENEDOR DOCKER (codex-workspaces)              │ │
+│  │                                                         │ │
+│  │  ┌──────────┐  ┌──────────┐       ┌──────────┐        │ │
+│  │  │ user1    │  │ user2    │  ...  │ user20   │        │ │
+│  │  │ :8081    │  │ :8082    │       │ :8100    │        │ │
+│  │  │code-     │  │code-     │       │code-     │        │ │
+│  │  │server    │  │server    │       │server    │        │ │
+│  │  └──────────┘  └──────────┘       └──────────┘        │ │
+│  │                                                         │ │
+│  │  Todos los espacios en UN contenedor                   │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                           │                                  │
+│                           ▼                                  │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │     ~/codex/users/ (Almacenamiento Persistente)        │ │
+│  │                                                         │ │
+│  │  user1/  user2/  user3/  ...  user20/                  │ │
+│  └────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Componentes:** Nginx (proxy inverso) + Tailscale (exposición pública) en host → Contenedor Docker con instancias de code-server → Almacenamiento persistente
+
+---
+
+## 🚀 Inicio Rápido
+
+### Prerequisitos
+- Docker, Nginx, Tailscale (autenticado)
+- `curl`, `unzip`
+- Ubuntu 22.04 LTS recomendado
+
+### Instalación
+
+```bash
+chmod +x codex-setup.sh
+sudo ./codex-setup.sh
+```
+
+**Se te pedirá elegir:**
+1. **Configuración Completa (Tailscale):** Acceso público vía URL segura (`https://app.ts.net`)
+2. **Solo Limpieza:** Eliminar todo
+3. **Configuración de Red Local:** Acceso solo LAN vía IP (`http://192.168.x.x`)
+
+### Modos de Uso
+
+**Opción 1: Internet (Tailscale)**
+- HTTPS Seguro
+- Accesible desde cualquier lugar
+- Requiere Tailscale
+
+**Opción 2: Limpieza (Mantenimiento)**
+- Elimina contenedores e imágenes Docker
+- Borra archivos de configuración
+- Elimina datos de usuarios (requiere confirmación)
+
+**Opción 3: Red Local (LAN)**
+- HTTP Estándar
+- Accesible solo en la misma WiFi/Ethernet
+- No requiere internet/Tailscale
+- Acceso vía: `http://<IP-SERVIDOR>/`
+
+### Instalación No Interactiva (CI/CD)
+
+```bash
+export CODEX_NUM_USERS=15
+export CODEX_DOMAIN="myapp.ts.net"
+sudo -E ./codex-setup.sh
+```
+
+---
+
+## 💻 Lenguajes Pre-instalados
+
+| Lenguaje | Versión | Herramientas |
+|----------|---------|--------------|
+| **Python** | 3.10+ | pip, venv, pipenv, poetry, black, flake8 |
+| **Node.js** | 22.12.0 LTS | NVM, npm, yarn, pnpm, TypeScript, ESLint |
+| **Go** | 1.25.5 | go mod, go build, go test |
+| **Rust** | Última (rustup) | cargo, rustc |
+
+**También incluye:** Git, build-essential, gcc, wget, curl, code-server
+
+**Proyectos soportados:** React, Vue, Flask, Django, Express, FastAPI, APIs REST, herramientas CLI, ciencia de datos, y más
+
+---
+
+## 🔐 Credenciales de Espacios de Trabajo
+
+- Espacio de trabajo 1: `user1` / `user1-pass`
+- Espacio de trabajo 2: `user2` / `user2-pass`
+- ...y así sucesivamente
+
+---
+
+## 🛡️ Seguridad y Aislamiento
+
+**Aislamiento por Usuario Unix:**
+- Cada espacio de trabajo se ejecuta como usuario Linux dedicado (`user1`-`user30`)
+- Sin acceso root dentro de los espacios de trabajo
+- Los usuarios pueden VER otros espacios (solo lectura) pero NO PUEDEN ELIMINAR archivos fuera del suyo
+
+**Permisos:**
+- Propio espacio: Lectura/escritura/eliminación completa
+- Otros espacios: Solo lectura
+- Archivos del sistema: Solo lectura
+
+**Pruébalo:**
+```bash
+docker exec -it codex-workspaces su - user1
+whoami  # Muestra: user1
+rm /bin/ls  # Permiso denegado
+```
+
+---
+
+## 🎛️ Administración
+
+### Ver Estado
+```bash
+systemctl status codex-workspaces
+docker ps | grep codex
+```
+
+### Reiniciar Servicios
+```bash
+sudo systemctl restart codex-workspaces
+```
+
+### Ver Registros
+```bash
+docker logs -f codex-workspaces
+journalctl -xeu codex-workspaces
+```
+
+### Limpieza Completa
+```bash
+sudo ./codex-setup.sh
+# Elige opción 2: Solo Limpieza
+# Escribe 'YES' para confirmar
+```
+
+**Lo que se elimina:**
+- Todos los datos de espacios de trabajo
+- Contenedor e imagen Docker
+- Configuraciones de Nginx
+- Servicios systemd
+- Tailscale funnel
+
+---
+
+## 🔧 Configuración
+
+Edita las variables antes de la instalación o usa variables de entorno:
+
+```bash
+CODEX_NUM_USERS=25        # Número de espacios (1-30)
+CODEX_DOMAIN="app.ts.net" # Tu dominio Tailscale
+```
+
+**Para cambiar configuración:** Vuelve a ejecutar el script con nuevos valores. La limpieza es automática.
+
+---
+
+## 🐛 Solución de Problemas
+
+| Problema | Solución |
+|----------|----------|
+| Contenedor no ejecutándose | `sudo systemctl restart codex-workspaces` |
+| Error 502 Bad Gateway | Verifica que el contenedor esté activo: `docker ps` |
+| Conflictos de puertos | Verifica que los puertos 8081-81XX estén disponibles |
+| Errores de permisos | Los espacios se ejecutan como usuarios Unix (por diseño) |
+
+**Ver registros:**
+```bash
+docker logs --tail 50 codex-workspaces
+journalctl -xeu codex-workspaces --no-pager -n 50
+```
+
+---
+
+## 📊 Compatibilidad
+
+| Componente | Requisito |
+|-----------|-----------|
+| **SO** | Ubuntu 22.04 LTS |
+| **Docker** | 20.10+ |
+| **Nginx** | 1.18+ |
+| **Tailscale** | Cualquier versión reciente |
+
+**Versión:** v2.0 (Seguridad Mejorada)  
+**Lanzamiento:** Diciembre 2025
+
+### Actualización desde v1.x
+
+```bash
+# Respaldar datos (opcional)
+sudo cp -r ~/codex/users ~/codex-backup
+
+# Ejecutar instalación (limpieza automática)
+sudo ./codex-setup.sh
+```
+
+**Cambios importantes:** Aislamiento por usuario Unix agregado en v2.0
+
+---
+
+## 📂 Estructura del Proyecto
+
+```
+~/codex/
+├── landing/
+│   └── index.html              # Selector de espacios
+├── users/
+│   ├── user1/                  # Espacio 1 (montado en contenedor)
+│   ├── user2/                  # Espacio 2
+│   └── ...
+└── docker/
+    ├── Dockerfile              # Auto-generado
+    └── start-workspaces.sh     # Script de inicio del contenedor
+```
+
+---
+
+## 🌐 Red y Puertos
+
+- **Nginx:** Puerto 80 (host)
+- **Code-server:** Puertos 8081-81XX (dentro del contenedor, usando `--network host`)
+- **Tailscale:** HTTPS vía funnel
+
+---
+
+## 📖 Recursos Adicionales
+
+**Script Principal:**
+- `codex-setup.sh` - Multi-modo: Completa (1), Limpieza (2), o Local (3)
+
+**Uso:**
+```bash
+sudo ./codex-setup.sh
+# Opción 1: Configuración Completa (Tailscale)
+# Opción 2: Solo Limpieza
+# Opción 3: Modo Red Local (LAN)
+```
+
+Toda la configuración vía prompts interactivos o variables de entorno (`CODEX_NUM_USERS`, `CODEX_DOMAIN`).
+
+---
+
+## 📜 Licencia
+
+Licencia MIT - Copyright (c) 2025 Buffer Ring Organization
+
+Ver archivo [LICENSE](LICENSE) para más detalles.
+
+## 👥 Créditos
+
+**Desarrollado por [BufferRing](https://github.com/BufferRing)**  
+Sitio web: [bufferring.org](https://bufferring.org)
+
+**Proyecto Comunitario:** Esta es una herramienta educativa de código abierto puesta a disposición gratuita de estudiantes y profesores. No está oficialmente respaldada ni afiliada a ninguna institución o entidad gubernamental.
+
