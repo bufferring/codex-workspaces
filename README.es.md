@@ -1,3 +1,15 @@
+```
+██╗   ██╗███╗   ██╗███████╗███████╗ █████╗      ██████╗ ██████╗ ██████╗ ███████╗██╗  ██╗
+██║   ██║████╗  ██║██╔════╝██╔════╝██╔══██╗    ██╔════╝██╔═══██╗██╔══██╗██╔════╝╚██╗██╔╝
+██║   ██║██╔██╗ ██║█████╗  █████╗  ███████║    ██║     ██║   ██║██║  ██║█████╗   ╚███╔╝ 
+██║   ██║██║╚██╗██║██╔══╝  ██╔══╝  ██╔══██║    ██║     ██║   ██║██║  ██║██╔══╝   ██╔██╗ 
+╚██████╔╝██║ ╚████║███████╗██║     ██║  ██║    ╚██████╗╚██████╔╝██████╔╝███████╗██╔╝ ██╗
+ ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚═╝     ╚═╝  ╚═╝     ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
+    Dockerized Workspace Setup (Security-Enhanced)
+    Tailscale • Nginx • code-server • Multi-user
+==================================================
+```
+
 # UNEFA Codex - Sistema de Espacios de Trabajo Dockerizados con Code-Server
 
 ![Versión](https://img.shields.io/badge/versión-2.0-blue.svg)
@@ -106,11 +118,14 @@ sudo -E ./codex-setup.sh
 | Lenguaje | Versión | Herramientas |
 |----------|---------|--------------|
 | **Python** | 3.10+ | pip, venv, pipenv, poetry, black, flake8 |
-| **Node.js** | 22.12.0 LTS | NVM, npm, yarn, pnpm, TypeScript, ESLint |
+| **Node.js** | 22.12.0 LTS (NVM) | npm, yarn, pnpm, TypeScript, ESLint, Prettier, nodemon |
+| **Node.js (Actual)** | 24.x Current | Disponible vía NVM (`nvm use 24`) |
 | **Go** | 1.25.5 | go mod, go build, go test |
 | **Rust** | Última (rustup) | cargo, rustc |
+| **C++** | Toolchain GCC | g++, make, build-essential |
+| **C#** | .NET SDK 8.0 | CLI `dotnet`, plantillas de consola/web |
 
-**También incluye:** Git, build-essential, gcc, wget, curl, code-server
+**También incluye:** Git, build-essential, gcc/g++, wget, curl, code-server, perfiles NVM, administrador de cargas de .NET
 
 **Proyectos soportados:** React, Vue, Flask, Django, Express, FastAPI, APIs REST, herramientas CLI, ciencia de datos, y más
 

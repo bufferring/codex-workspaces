@@ -20,15 +20,10 @@ cat << 'CODEX_BANNER'
 ██║   ██║██║╚██╗██║██╔══╝  ██╔══╝  ██╔══██║    ██║     ██║   ██║██║  ██║██╔══╝   ██╔██╗ 
 ╚██████╔╝██║ ╚████║███████╗██║     ██║  ██║    ╚██████╗╚██████╔╝██████╔╝███████╗██╔╝ ██╗
  ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚═╝     ╚═╝  ╚═╝     ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
-                                                                                        
-
         Dockerized Workspace Setup (Security-Enhanced)
         Tailscale • Nginx • code-server • Multi-user
 ==================================================
 CODEX_BANNER
-
-
-
 echo ""
 echo "=================================================="
 echo "CODEX — Dockerized Workspace Setup"
@@ -761,7 +756,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install system dependencies and code-server
 RUN apt-get update && \
     apt-get install -y \
-    curl wget git build-essential sudo \
+    curl wget git build-essential sudo zsh \
     python3 python3-pip python3-venv \
     ca-certificates gnupg && \
     curl -fsSL https://code-server.dev/install.sh | sh && \
@@ -782,14 +777,25 @@ ENV GOPATH="/root/go"
 ENV PATH="${GOPATH}/bin:${PATH}"
 
 # Install NVM and Node.js
-ENV NVM_DIR="/root/.nvm"
+ENV NVM_DIR="/usr/local/share/nvm"
 ENV NODE_VERSION=22.12.0
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash && \
-    bash -lc ". \"$NVM_DIR/nvm.sh\" && nvm install ${NODE_VERSION} && nvm alias default ${NODE_VERSION} && nvm use default" && \
-    echo 'export NVM_DIR="$HOME/.nvm"' >> /etc/profile.d/nvm.sh && \
-    echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"' >> /etc/profile.d/nvm.sh && \
-    echo '[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"' >> /etc/profile.d/nvm.sh
+ENV NODE_VERSION_NEXT=24
+RUN mkdir -p "$NVM_DIR" && \
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash && \
+    bash -lc ". \"$NVM_DIR/nvm.sh\" && nvm install ${NODE_VERSION} && nvm install ${NODE_VERSION_NEXT} && nvm alias default ${NODE_VERSION} && nvm use default" && \
+    printf '%s\n' 'export NVM_DIR="/usr/local/share/nvm"' '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"' '[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"' > /etc/profile.d/nvm.sh && \
+    printf '\n. /etc/profile.d/nvm.sh\n' >> /etc/bash.bashrc && \
+    printf '\n. /etc/profile.d/nvm.sh\n' >> /etc/profile && \
+    mkdir -p /etc/zsh && \
+    printf '\n. /etc/profile.d/nvm.sh\n' >> /etc/zsh/zshrc && \
+    printf '\n. /etc/profile.d/nvm.sh\n' >> /etc/zsh/zprofile && \
+    printf '\n. /etc/profile.d/nvm.sh\n' >> /etc/skel/.bashrc && \
+    printf '\n. /etc/profile.d/nvm.sh\n' >> /etc/skel/.zshrc && \
+    printf '\n. /etc/profile.d/nvm.sh\n' >> /root/.bashrc && \
+    chmod -R 755 "$NVM_DIR"
 ENV PATH="${NVM_DIR}/versions/node/v${NODE_VERSION}/bin:${PATH}"
+ENV BASH_ENV="/etc/profile.d/nvm.sh"
+RUN bash -lc "nvm alias default ${NODE_VERSION} && nvm use default && [ \"\$(nvm current)\" = \"v${NODE_VERSION}\" ] && [ \"\$(node --version)\" = \"v${NODE_VERSION}\" ] && nvm exec ${NODE_VERSION_NEXT} node --version"
 
 # Install common development tools
 RUN pip3 install --no-cache-dir pipenv poetry black flake8 pylint flask Django && \
