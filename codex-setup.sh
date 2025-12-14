@@ -5,7 +5,7 @@ set -e
 # Version: 2.0 (Security-Enhanced)
 # Compatible with: Ubuntu 22.04 LTS, Docker 20.10+, Nginx 1.18+
 # 
-# Copyright (c) 2025 Buffer Ring Organization
+# Copyright (c) 2025 BufferRing Organization
 # Licensed under MIT License
 # Website: https://bufferring.org | GitHub: @BufferRing
 #
@@ -13,8 +13,27 @@ set -e
 # - Nginx and Tailscale run on the host
 # - All code-server workspaces run in a single Docker container with Unix user isolation
 
+cat << 'CODEX_BANNER'
+██╗   ██╗███╗   ██╗███████╗███████╗ █████╗      ██████╗ ██████╗ ██████╗ ███████╗██╗  ██╗
+██║   ██║████╗  ██║██╔════╝██╔════╝██╔══██╗    ██╔════╝██╔═══██╗██╔══██╗██╔════╝╚██╗██╔╝
+██║   ██║██╔██╗ ██║█████╗  █████╗  ███████║    ██║     ██║   ██║██║  ██║█████╗   ╚███╔╝ 
+██║   ██║██║╚██╗██║██╔══╝  ██╔══╝  ██╔══██║    ██║     ██║   ██║██║  ██║██╔══╝   ██╔██╗ 
+╚██████╔╝██║ ╚████║███████╗██║     ██║  ██║    ╚██████╗╚██████╔╝██████╔╝███████╗██╔╝ ██╗
+ ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚═╝     ╚═╝  ╚═╝     ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
+                                                                                        
+
+        Dockerized Workspace Setup (Security-Enhanced)
+        Tailscale • Nginx • code-server • Multi-user
+==================================================
+CODEX_BANNER
+
+
+
+echo ""
 echo "=================================================="
-echo "🚀 UNEFA Codex - Dockerized Workspace Setup"
+echo "CODEX — Dockerized Workspace Setup"
+echo "Security-Enhanced • Tailscale • Nginx • code-server"
+echo "Copyright © 2025 BufferRing Organization"
 echo "=================================================="
 echo ""
 
@@ -38,7 +57,7 @@ ACTUAL_HOME=$(eval echo ~$ACTUAL_USER)
 echo ""
 echo "Select operation mode:"
 echo "  1) Full Setup (Tailscale Public Access)"
-echo "  2) Cleanup Only (remove all components)"
+echo "  2) Uninstall (Delete everything)"
 echo "  3) Local Network Setup (LAN only, no internet required)"
 echo ""
 read -p "Enter your choice (1-3): " MODE_CHOICE
@@ -47,16 +66,16 @@ case $MODE_CHOICE in
     2)
         # CLEANUP MODE
         echo ""
-        echo "=================================================="
-        echo "🧹 CLEANUP MODE"
-        echo "=================================================="
+    echo "=================================================="
+    echo "🗑️ UNINSTALL MODE (Delete everything)"
+    echo "=================================================="
         
         CODEX_HOME="$ACTUAL_HOME/codex"
         DOCKER_IMAGE="codex-workspace"
         DOCKER_CONTAINER="codex-workspaces"
         
         echo ""
-        echo "⚠️  WARNING: This will permanently delete:"
+    echo "⚠️  WARNING: This will permanently delete:"
         echo "  - All workspace data ($CODEX_HOME)"
         echo "  - Docker container and image"
         echo "  - Nginx configurations"
@@ -65,12 +84,12 @@ case $MODE_CHOICE in
         read -p "Type 'YES' to confirm deletion: " CONFIRM
         
         if [ "$CONFIRM" != "YES" ]; then
-            echo "❌ Cleanup cancelled"
+            echo "❌ Uninstall cancelled"
             exit 0
         fi
         
         echo ""
-        echo "🧹 Starting cleanup..."
+    echo "🗑️ Starting uninstall..."
         
         systemctl stop codex-workspaces nginx 2>/dev/null || true
         systemctl disable codex-workspaces 2>/dev/null || true
@@ -92,8 +111,8 @@ case $MODE_CHOICE in
         tailscale funnel reset 2>/dev/null || true
         
         echo ""
-        echo "✅ Cleanup complete!"
-        echo "To reinstall: sudo ./codex-setup.sh (choose option 1)"
+    echo "✅ Uninstall complete!"
+    echo "To reinstall: sudo ./codex-setup.sh (choose option 1)"
         exit 0
         ;;
     1)
@@ -766,15 +785,26 @@ ENV PATH="${GOPATH}/bin:${PATH}"
 ENV NVM_DIR="/root/.nvm"
 ENV NODE_VERSION=22.12.0
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash && \
-    . "$NVM_DIR/nvm.sh" && \
-    nvm install ${NODE_VERSION} && \
-    nvm use ${NODE_VERSION} && \
-    nvm alias default ${NODE_VERSION}
+    bash -lc ". \"$NVM_DIR/nvm.sh\" && nvm install ${NODE_VERSION} && nvm alias default ${NODE_VERSION} && nvm use default" && \
+    echo 'export NVM_DIR="$HOME/.nvm"' >> /etc/profile.d/nvm.sh && \
+    echo '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"' >> /etc/profile.d/nvm.sh && \
+    echo '[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"' >> /etc/profile.d/nvm.sh
 ENV PATH="${NVM_DIR}/versions/node/v${NODE_VERSION}/bin:${PATH}"
 
 # Install common development tools
-RUN pip3 install --no-cache-dir pipenv poetry black flake8 pylint && \
+RUN pip3 install --no-cache-dir pipenv poetry black flake8 pylint flask Django && \
     npm install -g yarn pnpm typescript nodemon eslint prettier
+
+# Install .NET SDK (C#) for Ubuntu 22.04
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
+    dpkg -i packages-microsoft-prod.deb && \
+    rm packages-microsoft-prod.deb && \
+    apt-get update && \
+    apt-get install -y dotnet-sdk-8.0 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create workspace directory
 RUN mkdir -p /workspaces
