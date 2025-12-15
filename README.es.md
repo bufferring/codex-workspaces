@@ -81,27 +81,26 @@ sudo ./codex-setup.sh
 ```
 
 **Se te pedirá elegir:**
-1. **Configuración Completa (Tailscale):** Acceso público vía URL segura (`https://app.ts.net`)
-2. **Solo Limpieza:** Eliminar todo
-3. **Configuración de Red Local:** Acceso solo LAN vía IP (`http://192.168.x.x`)
+1. **Configuración Completa (Tailscale acceso público):** URL pública a través de Tailscale (`https://app.ts.net`)
+2. **Desinstalar (Eliminar todo):** Elimina servicios Codex, datos y configuraciones
+3. **Configuración Red Local (solo LAN):** Acceso por IP de la red (`http://192.168.x.x`)
 
 ### Modos de Uso
 
-**Opción 1: Internet (Tailscale)**
-- HTTPS Seguro
-- Accesible desde cualquier lugar
-- Requiere Tailscale
+**Opción 1: Configuración Completa (Tailscale acceso público)**
+- HTTPS seguro mediante funnel de Tailscale
+- Accesible desde cualquier lugar con tu cuenta Tailscale
+- Solicita un dominio tipo `miapp.ts.net`
 
-**Opción 2: Limpieza (Mantenimiento)**
-- Elimina contenedores e imágenes Docker
-- Borra archivos de configuración
-- Elimina datos de usuarios (requiere confirmación)
+**Opción 2: Desinstalar (Eliminar todo)**
+- Detiene servicios systemd y elimina contenedor/imagen Docker
+- Borra configuración de Nginx, datos de usuarios y archivos auxiliares
+- Obliga a escribir `YES` para confirmar la eliminación irreversible
 
-**Opción 3: Red Local (LAN)**
-- HTTP Estándar
-- Accesible solo en la misma WiFi/Ethernet
-- No requiere internet/Tailscale
-- Acceso vía: `http://<IP-SERVIDOR>/`
+**Opción 3: Configuración Red Local (solo LAN)**
+- HTTP estándar servido únicamente en la red local
+- Detecta automáticamente la IP del servidor (editable si es necesario)
+- No requiere Tailscale ni internet; acceso via `http://<IP-SERVIDOR>/`
 
 ### Instalación No Interactiva (CI/CD)
 
@@ -179,10 +178,10 @@ docker logs -f codex-workspaces
 journalctl -xeu codex-workspaces
 ```
 
-### Limpieza Completa
+### Desinstalación Completa
 ```bash
 sudo ./codex-setup.sh
-# Elige opción 2: Solo Limpieza
+# Elige opción 2: Desinstalar (Eliminar todo)
 # Escribe 'YES' para confirmar
 ```
 

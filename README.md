@@ -81,27 +81,26 @@ sudo ./codex-setup.sh
 ```
 
 **You will be asked to choose:**
-1. **Full Setup (Tailscale):** Public access via secure URL (`https://app.ts.net`)
-2. **Cleanup Only:** Remove everything
-3. **Local Network Setup:** LAN access only via IP (`http://192.168.x.x`)
+1. **Full Setup (Tailscale Public Access):** Public URL via Tailscale funnel (`https://app.ts.net`)
+2. **Uninstall (Delete everything):** Remove Codex services, data, and configs
+3. **Local Network Setup (LAN only):** LAN access only via server IP (`http://192.168.x.x`)
 
 ### Usage Modes
 
-**Option 1: Internet (Tailscale)**
-- Secure HTTPS
-- Accessible from anywhere
-- Requires Tailscale
+**Option 1: Full Setup (Tailscale Public Access)**
+- Secure HTTPS endpoint through Tailscale funnel
+- Accessible from anywhere with your Tailscale auth
+- Prompts for `myapp.ts.net`-style domain
 
-**Option 2: Cleanup (Maintenance)**
-- Removes Docker containers/images
-- Deletes configuration files
-- Clears user data (requires confirmation)
+**Option 2: Uninstall (Delete everything)**
+- Stops systemd services and removes Docker container/image
+- Removes Nginx config, workspace data, and supporting files
+- Requires typing `YES` to confirm irreversible deletion
 
-**Option 3: Local Network (LAN)**
-- Standard HTTP
-- Accessible only on same WiFi/Ethernet
-- No internet/Tailscale needed
-- Access via: `http://<SERVER-IP>/`
+**Option 3: Local Network Setup (LAN only)**
+- Standard HTTP served on the LAN only
+- Detects server IP automatically (you can override)
+- No Tailscale or public internet required; access via `http://<SERVER-IP>/`
 
 ### Non-Interactive Setup (CI/CD)
 
@@ -179,10 +178,10 @@ docker logs -f codex-workspaces
 journalctl -xeu codex-workspaces
 ```
 
-### Complete Cleanup
+### Full Uninstall
 ```bash
 sudo ./codex-setup.sh
-# Choose option 2: Cleanup Only
+# Choose option 2: Uninstall (Delete everything)
 # Type 'YES' to confirm
 ```
 
