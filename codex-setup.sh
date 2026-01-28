@@ -47,6 +47,7 @@ if [ "$ACTUAL_USER" = "root" ]; then
 fi
 
 ACTUAL_HOME=$(eval echo ~$ACTUAL_USER)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Mode selection
 echo ""
@@ -240,6 +241,26 @@ mkdir -p $CODEX_HOME/{landing,users,docker}
 chown -R $ACTUAL_USER:$ACTUAL_USER $CODEX_HOME
 chmod -R 755 $CODEX_HOME
 echo "✅ Step 2 complete!"
+echo ""
+
+LOGO_REMOTE="https://i.postimg.cc/Zn1BNPLg/UNEFA.png"
+LOCAL_LOGO="$CODEX_HOME/landing/assets/unefa.png"
+LOCAL_SOURCE="$SCRIPT_DIR/UNEFA.png"
+
+echo "🖼️ Step 2.5: Cache Branding Assets"
+mkdir -p "$CODEX_HOME/landing/assets"
+if [ -f "$LOCAL_SOURCE" ]; then
+    cp "$LOCAL_SOURCE" "$LOCAL_LOGO"
+    chown $ACTUAL_USER:$ACTUAL_USER "$LOCAL_LOGO"
+    echo "   Copied bundled logo asset for offline use."
+elif [ -f "$LOCAL_LOGO" ]; then
+    echo "   Reusing existing cached logo."
+elif curl -fsSL "$LOGO_REMOTE" -o "$LOCAL_LOGO"; then
+    chown $ACTUAL_USER:$ACTUAL_USER "$LOCAL_LOGO"
+    echo "   Downloaded logo for offline cache."
+else
+    echo "   ⚠️ Could not obtain logo; runtime fallback will be used."
+fi
 echo ""
 
 # Step 3: Create Landing Page
@@ -549,7 +570,7 @@ cat > $CODEX_HOME/landing/index.html << 'EOF'
     
     <div class="preloader" id="preloader">
         <div class="logo-container">
-            <img src="https://i.postimg.cc/Zn1BNPLg/UNEFA.png" alt="UNEFA Codex Logo">
+            <img src="assets/unefa.png" data-remote="https://i.postimg.cc/Zn1BNPLg/UNEFA.png" alt="UNEFA Codex Logo" onerror="if(!this.dataset.fallback){this.dataset.fallback='true';this.src=this.dataset.remote;}else if(!this.dataset.placeholder){this.dataset.placeholder='true';this.src='data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 200 200&quot;><rect width=&quot;200&quot; height=&quot;200&quot; fill=&quot;%23030ba6&quot;/><text x=&quot;50%25&quot; y=&quot;50%25&quot; font-size=&quot;32&quot; fill=&quot;%23ffd300&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;middle&quot;>UNEFA</text></svg>';}">
         </div>
         <div class="loading-text" id="loading-text">Cargando UNEFA Codex</div>
         <div class="loading-bar">
@@ -563,7 +584,7 @@ cat > $CODEX_HOME/landing/index.html << 'EOF'
     
     <div class="container" id="main-container">
         <div class="logo">
-            <img src="https://i.postimg.cc/Zn1BNPLg/UNEFA.png" alt="UNEFA Codex Logo">
+            <img src="assets/unefa.png" data-remote="https://i.postimg.cc/Zn1BNPLg/UNEFA.png" alt="UNEFA Codex Logo" onerror="if(!this.dataset.fallback){this.dataset.fallback='true';this.src=this.dataset.remote;}else if(!this.dataset.placeholder){this.dataset.placeholder='true';this.src='data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 200 200&quot;><rect width=&quot;200&quot; height=&quot;200&quot; fill=&quot;%23030ba6&quot;/><text x=&quot;50%25&quot; y=&quot;50%25&quot; font-size=&quot;32&quot; fill=&quot;%23ffd300&quot; text-anchor=&quot;middle&quot; dominant-baseline=&quot;middle&quot;>UNEFA</text></svg>';}">
         </div>
         
         <div class="header">
@@ -596,7 +617,7 @@ cat >> $CODEX_HOME/landing/index.html << EOF
         
         <div class="footer">
             <p>UNEFA Codex - Entorno de Desarrollo Seguro</p>
-            <p style="margin-top: 5px; font-size: 12px; opacity: 0.7;">© 2025 Universidad Nacional Experimental Politécnica de la Fuerza Armada</p>
+            <p style="margin-top: 5px; font-size: 12px; opacity: 0.7;">© 2026 Universidad Nacional Experimental Politécnica de la Fuerza Armada</p>
         </div>
     </div>
 
@@ -669,7 +690,8 @@ cat >> $CODEX_HOME/landing/index.html << EOF
                 e.preventDefault();
                 e.preventDefault();
                 const workspace = document.getElementById('workspace').value;
-                window.location.href = '${PROTOCOL}://${DOMAIN}/' + workspace + '/';
+                const baseUrl = window.location.origin.replace(/\/$/, '');
+                window.location.href = baseUrl + '/' + workspace + '/';
             });
             
             setTimeout(() => {
@@ -689,7 +711,7 @@ tee /etc/nginx/sites-available/codex > /dev/null << EOF
 # UNEFA Codex - Path-based configuration
 server {
     listen 80;
-    server_name $DOMAIN;
+    server_name _;
     client_max_body_size 0;
 
     # Security headers
