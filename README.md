@@ -5,14 +5,15 @@
 ██║   ██║██║╚██╗██║██╔══╝  ██╔══╝  ██╔══██║    ██║     ██║   ██║██║  ██║██╔══╝   ██╔██╗ 
 ╚██████╔╝██║ ╚████║███████╗██║     ██║  ██║    ╚██████╗╚██████╔╝██████╔╝███████╗██╔╝ ██╗
  ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚═╝     ╚═╝  ╚═╝     ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝
-    Dockerized Workspace Setup (Security-Enhanced)
+**Version:** v3.0.0 (Security-Enhanced)  
     Tailscale • Nginx • code-server • Multi-user
+**Breaking changes:** Unix user isolation added in v3.0.0
 ==================================================
 ```
 
 # UNEFA Codex - Dockerized Code-Server Workspace System
 
-![Version](https://img.shields.io/badge/version-2.0-blue.svg)
+![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)
 ![Shell](https://img.shields.io/badge/shell-bash-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-orange.svg)
 ![Platform](https://img.shields.io/badge/platform-ubuntu%2022.04-purple.svg)
@@ -82,8 +83,8 @@ sudo ./codex-setup.sh
 
 **You will be asked to choose:**
 1. **Full Setup (Tailscale Public Access):** Public URL via Tailscale funnel (`https://app.ts.net`)
-2. **Uninstall (Delete everything):** Remove Codex services, data, and configs
-3. **Local Network Setup (LAN only):** LAN access only via server IP (`http://192.168.x.x`)
+2. **Local Network Setup (LAN only):** LAN access only via server IP (`http://192.168.x.x`)
+3. **Uninstall (Delete everything):** Remove Codex services, data, and configs
 
 ### Usage Modes
 
@@ -92,15 +93,15 @@ sudo ./codex-setup.sh
 - Accessible from anywhere with your Tailscale auth
 - Prompts for `myapp.ts.net`-style domain
 
-**Option 2: Uninstall (Delete everything)**
-- Stops systemd services and removes Docker container/image
-- Removes Nginx config, workspace data, and supporting files
-- Requires typing `YES` to confirm irreversible deletion
-
-**Option 3: Local Network Setup (LAN only)**
+**Option 2: Local Network Setup (LAN only)**
 - Standard HTTP served on the LAN only
 - Detects server IP automatically (you can override)
 - No Tailscale or public internet required; access via `http://<SERVER-IP>/`
+
+**Option 3: Uninstall (Delete everything)**
+- Stops systemd services and removes Docker container/image
+- Removes Nginx config, workspace data, and supporting files
+- Requires typing `YES` to confirm irreversible deletion
 
 ### Non-Interactive Setup (CI/CD)
 
@@ -117,7 +118,7 @@ sudo -E ./codex-setup.sh
 | Language | Version | Tools |
 |----------|---------|-------|
 | **Python** | 3.10+ | pip, venv, pipenv, poetry, black, flake8 |
-| **Node.js** | 22.12.0 LTS (NVM) | npm, yarn, pnpm, TypeScript, ESLint, Prettier, nodemon |
+| **Node.js** | 22.12.0 LTS (NVM) | Bun (preferred), npm, yarn, pnpm, TypeScript, ESLint, Prettier, nodemon |
 | **Node.js (Next)** | 24.x Current | Available via NVM (`nvm use 24`) |
 | **Go** | 1.25.5 | go mod, go build, go test |
 | **Rust** | Latest (rustup) | cargo, rustc |
@@ -181,7 +182,7 @@ journalctl -xeu codex-workspaces
 ### Full Uninstall
 ```bash
 sudo ./codex-setup.sh
-# Choose option 2: Uninstall (Delete everything)
+# Choose option 3: Uninstall (Delete everything)
 # Type 'YES' to confirm
 ```
 
@@ -233,7 +234,7 @@ journalctl -xeu codex-workspaces --no-pager -n 50
 | **Nginx** | 1.18+ |
 | **Tailscale** | Any recent version |
 
-**Version:** v2.0 (Security-Enhanced)  
+**Version:** v3.0.0 (Security-Enhanced)  
 **Release:** December 2025
 
 ### Upgrading from v1.x
@@ -246,24 +247,81 @@ sudo cp -r ~/codex/users ~/codex-backup
 sudo ./codex-setup.sh
 ```
 
-**Breaking changes:** Unix user isolation added in v2.0
+**Breaking changes:** Unix user isolation added in v3.0.0
 
 ---
 
-## 📂 Project Structure
+## 📂 Repository Layout
+
+```
+codex-workspaces/
+├── codex-setup.sh          # Main installer/orchestrator script
+├── src/                    # React + Tailwind UI for the desktop companion
+├── public/                 # Static assets (workspaces.json, manifest, icons)
+├── src-tauri/              # Tauri Rust backend and bundle config
+├── dist/                   # Vite build output (generated)
+├── node_modules/           # Project dependencies (generated)
+├── package.json            # Vite/Tauri workspace manifest
+├── tailwind.config.js      # Tailwind design tokens
+├── vite.config.ts          # Vite + PWA configuration
+├── README.md               # EN docs
+└── README.es.md            # ES docs
+```
+
+### Provisioned Host Layout
+
+Once `codex-setup.sh` runs it provisions the server under `~/codex/`:
 
 ```
 ~/codex/
-├── landing/
-│   └── index.html              # Workspace selector
-├── users/
-│   ├── user1/                  # Workspace 1 (mounted in container)
-│   ├── user2/                  # Workspace 2
-│   └── ...
-└── docker/
-    ├── Dockerfile              # Auto-generated
-    └── start-workspaces.sh     # Container startup script
+├── landing/                # Workspace selector served by Nginx
+├── users/                  # user1 … userN home directories
+└── docker/                 # Auto-generated Dockerfile and startup scripts
 ```
+
+---
+
+## 🖥️ Desktop Companion App
+
+The bundled desktop assistant streamlines running `codex-setup.sh` and opening workspaces.
+
+### Requirements
+
+- Bun (preferred) or Node.js 18+ with npm available
+- Rust toolchain + `cargo install tauri-cli`
+
+### Install Dependencies
+
+```bash
+bun install
+```
+
+### Development
+
+```bash
+# Launch Vite + Tauri together
+bun run tauri:dev
+
+# Browser-only preview (optional)
+bun run dev
+```
+
+The UI defaults to the repository copy of `codex-setup.sh`. Update the path field in the app if you relocate it.
+
+### Build Desktop Packages
+
+```bash
+# Compile production assets
+bun run build
+
+# Produce Linux bundles (AppImage, deb, rpm) and the raw binary
+bun run tauri:build
+
+# Produce only the raw Linux executable (no AppImage/deb/rpm)
+bun run tauri build --bundles none
+```
+
+Executables live under `src-tauri/target/release/`.
 
 ---
 
@@ -284,8 +342,8 @@ sudo ./codex-setup.sh
 ```bash
 sudo ./codex-setup.sh
 # Option 1: Full Setup (Tailscale)
-# Option 2: Cleanup Only
-# Option 3: Local Network Mode (LAN)
+# Option 2: Local Network Mode (LAN only)
+# Option 3: Uninstall (Delete everything)
 ```
 
 All configuration via interactive prompts or environment variables (`CODEX_NUM_USERS`, `CODEX_DOMAIN`).
@@ -294,7 +352,9 @@ All configuration via interactive prompts or environment variables (`CODEX_NUM_U
 
 ## 📜 License
 
-See [LICENSE](LICENSE) file for details.
+MIT License - Copyright (c) 2025 Buffer Ring Organization
+
+See [LICENSE](LICENSE) for details.
 
 ## 👥 Credits
 

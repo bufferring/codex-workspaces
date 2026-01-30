@@ -2,7 +2,7 @@
 set -e
 
 # UNEFA Codex - Dockerized Workspace Setup Script
-# Version: 2.0 (Security-Enhanced)
+# Version: 3.0.0 (Security-Enhanced)
 # Compatible with: Ubuntu 22.04 LTS, Docker 20.10+, Nginx 1.18+
 # 
 # Copyright (c) 2025 BufferRing Organization
@@ -53,13 +53,13 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo ""
 echo "Select operation mode:"
 echo "  1) Full Setup (Tailscale Public Access)"
-echo "  2) Uninstall (Delete everything)"
-echo "  3) Local Network Setup (LAN only, no internet required)"
+echo "  2) Local Network Setup (LAN only, no internet required)"
+echo "  3) Uninstall (Delete everything)"
 echo ""
 read -p "Enter your choice (1-3): " MODE_CHOICE
 
 case $MODE_CHOICE in
-    2)
+    3)
         # CLEANUP MODE
         echo ""
     echo "=================================================="
@@ -119,7 +119,7 @@ case $MODE_CHOICE in
         PROTOCOL="https"
         IS_LOCAL=false
         ;;
-    3)
+    2)
         echo ""
         echo "=================================================="
         echo "🏠 LOCAL NETWORK MODE"

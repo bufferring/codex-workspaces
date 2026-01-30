@@ -1,0 +1,68 @@
+name: Release Linux Executable
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    name: Build UNEFA Codex Linux Binary
+    runs-on: ubuntu-latest
+    env:
+      TAURI_SKIP_DEVTOOLS_INSTALL: "true"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup2.4-dev \
+            libwebkit2gtk-4.1-dev \
+            libjavascriptcoregtk-4.1-dev
+          sudo ln -sf /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.1.pc /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc
+          sudo ln -sf /usr/lib/x86_64-linux-gnu/pkgconfig/javascriptcoregtk-4.1.pc /usr/lib/x86_64-linux-gnu/pkgconfig/javascriptcoregtk-4.0.pc
+          sudo ln -sf /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.1.so /usr/lib/x86_64-linux-gnu/libwebkit2gtk-4.0.so
+          sudo ln -sf /usr/lib/x86_64-linux-gnu/libjavascriptcoregtk-4.1.so /usr/lib/x86_64-linux-gnu/libjavascriptcoregtk-4.0.so
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: "latest"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install project dependencies
+        run: bun install
+
+      - name: Build release executable
+        run: bun run tauri build --bundles none
+
+      - name: Package executable
+        run: |
+          mkdir -p dist-artifacts
+          cp src-tauri/target/release/unefa-codex dist-artifacts/
+          tar -czf unefa-codex-linux.tar.gz -C dist-artifacts unefa-codex
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unefa-codex-linux
+          path: |
+            unefa-codex-linux.tar.gz
+
+      - name: Attach asset to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: unefa-codex-linux.tar.gz
+          fail_on_unmatched_files: true

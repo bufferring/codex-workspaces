@@ -12,7 +12,7 @@
 
 # UNEFA Codex - Sistema de Espacios de Trabajo Dockerizados con Code-Server
 
-![Versión](https://img.shields.io/badge/versión-2.0-blue.svg)
+![Versión](https://img.shields.io/badge/versión-3.0.0-blue.svg)
 ![Shell](https://img.shields.io/badge/shell-bash-green.svg)
 ![Licencia](https://img.shields.io/badge/licencia-MIT-orange.svg)
 ![Plataforma](https://img.shields.io/badge/plataforma-ubuntu%2022.04-purple.svg)
@@ -82,8 +82,8 @@ sudo ./codex-setup.sh
 
 **Se te pedirá elegir:**
 1. **Configuración Completa (Tailscale acceso público):** URL pública a través de Tailscale (`https://app.ts.net`)
-2. **Desinstalar (Eliminar todo):** Elimina servicios Codex, datos y configuraciones
-3. **Configuración Red Local (solo LAN):** Acceso por IP de la red (`http://192.168.x.x`)
+2. **Configuración Red Local (solo LAN):** Acceso por IP de la red (`http://192.168.x.x`)
+3. **Desinstalar (Eliminar todo):** Elimina servicios Codex, datos y configuraciones
 
 ### Modos de Uso
 
@@ -92,15 +92,15 @@ sudo ./codex-setup.sh
 - Accesible desde cualquier lugar con tu cuenta Tailscale
 - Solicita un dominio tipo `miapp.ts.net`
 
-**Opción 2: Desinstalar (Eliminar todo)**
-- Detiene servicios systemd y elimina contenedor/imagen Docker
-- Borra configuración de Nginx, datos de usuarios y archivos auxiliares
-- Obliga a escribir `YES` para confirmar la eliminación irreversible
-
-**Opción 3: Configuración Red Local (solo LAN)**
+**Opción 2: Configuración Red Local (solo LAN)**
 - HTTP estándar servido únicamente en la red local
 - Detecta automáticamente la IP del servidor (editable si es necesario)
 - No requiere Tailscale ni internet; acceso via `http://<IP-SERVIDOR>/`
+
+**Opción 3: Desinstalar (Eliminar todo)**
+- Detiene servicios systemd y elimina contenedor/imagen Docker
+- Borra configuración de Nginx, datos de usuarios y archivos auxiliares
+- Obliga a escribir `YES` para confirmar la eliminación irreversible
 
 ### Instalación No Interactiva (CI/CD)
 
@@ -117,7 +117,7 @@ sudo -E ./codex-setup.sh
 | Lenguaje | Versión | Herramientas |
 |----------|---------|--------------|
 | **Python** | 3.10+ | pip, venv, pipenv, poetry, black, flake8 |
-| **Node.js** | 22.12.0 LTS (NVM) | npm, yarn, pnpm, TypeScript, ESLint, Prettier, nodemon |
+| **Node.js** | 22.12.0 LTS (NVM) | Bun (recomendado), npm, yarn, pnpm, TypeScript, ESLint, Prettier, nodemon |
 | **Node.js (Actual)** | 24.x Current | Disponible vía NVM (`nvm use 24`) |
 | **Go** | 1.25.5 | go mod, go build, go test |
 | **Rust** | Última (rustup) | cargo, rustc |
@@ -181,7 +181,7 @@ journalctl -xeu codex-workspaces
 ### Desinstalación Completa
 ```bash
 sudo ./codex-setup.sh
-# Elige opción 2: Desinstalar (Eliminar todo)
+# Elige opción 3: Desinstalar (Eliminar todo)
 # Escribe 'YES' para confirmar
 ```
 
@@ -233,7 +233,7 @@ journalctl -xeu codex-workspaces --no-pager -n 50
 | **Nginx** | 1.18+ |
 | **Tailscale** | Cualquier versión reciente |
 
-**Versión:** v2.0 (Seguridad Mejorada)  
+**Versión:** v3.0.0 (Seguridad Mejorada)  
 **Lanzamiento:** Diciembre 2025
 
 ### Actualización desde v1.x
@@ -246,24 +246,81 @@ sudo cp -r ~/codex/users ~/codex-backup
 sudo ./codex-setup.sh
 ```
 
-**Cambios importantes:** Aislamiento por usuario Unix agregado en v2.0
+**Cambios importantes:** Aislamiento por usuario Unix agregado en v3.0.0
 
 ---
 
-## 📂 Estructura del Proyecto
+## 📂 Estructura del Repositorio
+
+```
+codex-workspaces/
+├── codex-setup.sh          # Script principal de instalación/orquestación
+├── src/                    # UI React + Tailwind del asistente de escritorio
+├── public/                 # Recursos estáticos (workspaces.json, manifest, iconos)
+├── src-tauri/              # Backend Tauri en Rust y configuración de empaquetado
+├── dist/                   # Salida de Vite (generada)
+├── node_modules/           # Dependencias del proyecto (generadas)
+├── package.json            # Manifiesto del workspace Vite/Tauri
+├── tailwind.config.js      # Tokens de diseño Tailwind
+├── vite.config.ts          # Configuración de Vite + PWA
+├── README.md               # Documentación en inglés
+└── README.es.md            # Documentación en español
+```
+
+### Diseño aprovisionado en el host
+
+Tras ejecutar `codex-setup.sh`, el servidor queda organizado bajo `~/codex/`:
 
 ```
 ~/codex/
-├── landing/
-│   └── index.html              # Selector de espacios
-├── users/
-│   ├── user1/                  # Espacio 1 (montado en contenedor)
-│   ├── user2/                  # Espacio 2
-│   └── ...
-└── docker/
-    ├── Dockerfile              # Auto-generado
-    └── start-workspaces.sh     # Script de inicio del contenedor
+├── landing/                # Selector de espacios servido por Nginx
+├── users/                  # Directorios home user1 … userN
+└── docker/                 # Dockerfile y scripts generados automáticamente
 ```
+
+---
+
+## 🖥️ Aplicación de Escritorio
+
+El asistente de escritorio integrado simplifica la ejecución de `codex-setup.sh` y el acceso a los espacios.
+
+### Requisitos
+
+- Bun (recomendado) o Node.js 18+ con npm disponible
+- Toolchain de Rust + `cargo install tauri-cli`
+
+### Instalar dependencias
+
+```bash
+bun install
+```
+
+### Desarrollo
+
+```bash
+# Ejecuta Vite + Tauri juntos
+bun run tauri:dev
+
+# Vista previa solo en navegador (opcional)
+bun run dev
+```
+
+La interfaz usa por defecto la copia de `codex-setup.sh` en la raíz del repositorio. Ajusta el campo de ruta si decides moverlo.
+
+### Construir paquetes de escritorio
+
+```bash
+# Compila los assets de producción
+bun run build
+
+# Genera bundles para Linux (AppImage, deb, rpm) y el binario
+bun run tauri:build
+
+# Genera solo el ejecutable Linux (sin AppImage/deb/rpm)
+bun run tauri build --bundles none
+```
+
+Los ejecutables quedan en `src-tauri/target/release/`.
 
 ---
 
@@ -284,8 +341,8 @@ sudo ./codex-setup.sh
 ```bash
 sudo ./codex-setup.sh
 # Opción 1: Configuración Completa (Tailscale)
-# Opción 2: Solo Limpieza
-# Opción 3: Modo Red Local (LAN)
+# Opción 2: Modo Red Local (solo LAN)
+# Opción 3: Desinstalar (Eliminar todo)
 ```
 
 Toda la configuración vía prompts interactivos o variables de entorno (`CODEX_NUM_USERS`, `CODEX_DOMAIN`).
