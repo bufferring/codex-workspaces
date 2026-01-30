@@ -1,0 +1,44 @@
+{
+  "package": {
+    "productName": "UNEFA Codex",
+    "version": "3.0.0"
+  },
+  "build": {
+    "beforeBuildCommand": "bun run build",
+    "beforeDevCommand": "bun run dev -- --host",
+    "distDir": "../dist",
+    "devPath": "http://localhost:5173"
+  },
+  "tauri": {
+    "allowlist": {
+      "shell": {
+        "all": false,
+        "open": true
+      }
+    },
+    "bundle": {
+      "active": true,
+      "identifier": "org.bufferring.unefacodex",
+      "icon": [
+        "icons/icon.png",
+        "icons/icon.ico",
+        "icons/icon.icns"
+      ],
+      "resources": [
+        "../codex-setup.sh"
+      ]
+    },
+    "windows": [
+      {
+        "label": "main",
+        "title": "UNEFA Codex",
+        "width": 420,
+        "height": 540,
+        "resizable": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline';"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "baseUrl": "http://127.0.0.1",
+  "workspaces": [
+    { "id": "user1", "label": "Workspace 1" },
+    { "id": "user2", "label": "Workspace 2" },
+    { "id": "user3", "label": "Workspace 3" },
+    { "id": "user4", "label": "Workspace 4" }
+  ]
+}
