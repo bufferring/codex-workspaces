@@ -38,3 +38,40 @@ export async function invokeTauri<T = unknown>(command: string, args?: InvokeArg
   }
   return fn(command, args);
 }
+
+export function hasTauriBridge(): boolean {
+  return resolveInvoke() !== null;
+}
+
+export type InstallDetectionResult = {
+  installed: boolean;
+  baseUrl: string;
+  workspaces: Array<{
+    id: string;
+    label: string;
+    href: string;
+  }>;
+};
+
+export async function checkInstallState(): Promise<InstallDetectionResult> {
+  return invokeTauri<InstallDetectionResult>("check_install_state");
+}
+
+export async function openExternalUrl(url: string): Promise<void> {
+  if (!url) {
+    return;
+  }
+
+  if (hasTauriBridge()) {
+    try {
+      await invokeTauri("open_workspace_url", { url });
+      return;
+    } catch (err) {
+      console.error("Failed to open URL via Tauri command", err);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}

@@ -1,7 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use dirs_next::home_dir;
 use serde::{Deserialize, Serialize};
-use std::{path::Path, path::PathBuf, process::Command};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 use tauri::{Manager, PathResolver};
 
 #[derive(Debug, Deserialize)]
@@ -17,6 +22,22 @@ struct SetupOptions {
 struct LaunchResult {
     command: String,
     terminal: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceInfo {
+    id: String,
+    label: String,
+    href: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct InstallDetection {
+    installed: bool,
+    base_url: String,
+    workspaces: Vec<WorkspaceInfo>,
 }
 
 fn escape_for_double_quotes(value: &str) -> String {
@@ -102,7 +123,10 @@ fn spawn_terminal(command_str: &str) -> Result<String, String> {
         .unwrap_or_else(|| "No se encontró un emulador de terminal compatible.".into()))
 }
 
-fn resolve_script_path(script_candidate: &str, path_resolver: &PathResolver) -> Result<PathBuf, String> {
+fn resolve_script_path(
+    script_candidate: &str,
+    path_resolver: &PathResolver,
+) -> Result<PathBuf, String> {
     let trimmed = script_candidate.trim();
     let fallback = if trimmed.is_empty() {
         "codex-setup.sh"
@@ -183,8 +207,88 @@ fn resolve_script_path(script_candidate: &str, path_resolver: &PathResolver) -> 
     ))
 }
 
+fn detect_base_url(codex_home: &Path) -> String {
+    if let Ok(candidate) = std::env::var("CODEX_BASE_URL") {
+        let trimmed = candidate.trim();
+        if !trimmed.is_empty() {
+            return trimmed.to_string();
+        }
+    }
+
+    let hint_files = ["base-url.txt", ".base-url", "BASE_URL"];
+    for hint in hint_files {
+        let path = codex_home.join(hint);
+        if path.exists() {
+            if let Ok(contents) = fs::read_to_string(&path) {
+                let trimmed = contents.trim();
+                if !trimmed.is_empty() {
+                    return trimmed.to_string();
+                }
+            }
+        }
+    }
+
+    "http://127.0.0.1".to_string()
+}
+
+fn collect_workspaces(users_dir: &Path) -> Result<Vec<WorkspaceInfo>, String> {
+    let mut entries: Vec<(u16, WorkspaceInfo)> = Vec::new();
+
+    let read_dir = fs::read_dir(users_dir)
+        .map_err(|err| format!("No pude leer el directorio {:?}: {}", users_dir, err))?;
+
+    for entry_result in read_dir {
+        let entry = entry_result
+            .map_err(|err| format!("No pude procesar una entrada en {:?}: {}", users_dir, err))?;
+
+        let file_type = entry
+            .file_type()
+            .map_err(|err| format!("No pude determinar el tipo de {:?}: {}", entry.path(), err))?;
+
+        if !file_type.is_dir() {
+            continue;
+        }
+
+        let name = entry.file_name();
+        let name_str = match name.to_str() {
+            Some(value) => value,
+            None => continue,
+        };
+
+        if let Some(number_part) = name_str.strip_prefix("user") {
+            if number_part.is_empty() || !number_part.chars().all(|c| c.is_ascii_digit()) {
+                continue;
+            }
+
+            let parsed_number = number_part.parse::<u16>().unwrap_or(0);
+            if parsed_number == 0 {
+                continue;
+            }
+
+            let label = format!("Workspace {}", parsed_number);
+            let href = format!("/{}/", name_str);
+
+            entries.push((
+                parsed_number,
+                WorkspaceInfo {
+                    id: name_str.to_string(),
+                    label,
+                    href,
+                },
+            ));
+        }
+    }
+
+    entries.sort_by_key(|(order, _)| *order);
+
+    Ok(entries.into_iter().map(|(_, info)| info).collect())
+}
+
 #[tauri::command]
-async fn launch_codex(app_handle: tauri::AppHandle, options: SetupOptions) -> Result<LaunchResult, String> {
+async fn launch_codex(
+    app_handle: tauri::AppHandle,
+    options: SetupOptions,
+) -> Result<LaunchResult, String> {
     println!("launch_codex invoked with: {:?}", options);
     let script_candidate = if options.script_path.trim().is_empty() {
         "codex-setup.sh".to_string()
@@ -238,6 +342,42 @@ async fn launch_codex(app_handle: tauri::AppHandle, options: SetupOptions) -> Re
     })
 }
 
+#[tauri::command]
+async fn check_install_state() -> Result<InstallDetection, String> {
+    let home_path = home_dir()
+        .ok_or_else(|| "No pude determinar el directorio HOME del usuario.".to_string())?;
+    let codex_home = home_path.join("codex");
+    let users_dir = codex_home.join("users");
+    let base_url = detect_base_url(&codex_home);
+
+    if !users_dir.is_dir() {
+        return Ok(InstallDetection {
+            installed: false,
+            base_url,
+            workspaces: Vec::new(),
+        });
+    }
+
+    let workspaces = collect_workspaces(&users_dir)?;
+
+    Ok(InstallDetection {
+        installed: !workspaces.is_empty(),
+        base_url,
+        workspaces,
+    })
+}
+
+#[tauri::command]
+async fn open_workspace_url(app_handle: tauri::AppHandle, url: String) -> Result<(), String> {
+    let trimmed = url.trim();
+    if trimmed.is_empty() {
+        return Err("La URL está vacía.".to_string());
+    }
+
+    tauri::api::shell::open(&app_handle.shell_scope(), trimmed, None)
+        .map_err(|err| format!("No pude abrir la URL: {}", err))
+}
+
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
@@ -248,7 +388,11 @@ fn main() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![launch_codex])
+        .invoke_handler(tauri::generate_handler![
+            launch_codex,
+            check_install_state,
+            open_workspace_url
+        ])
         .run(tauri::generate_context!())
         .expect("failed to run Codex frontend");
 }

@@ -68,11 +68,24 @@ const resources = {
         terminalLabel: "Terminal"
       },
       statusPanel: {
-        title: "Status"
+        title: "Status",
+        placeholder: "No activity yet."
       },
       workspaces: {
         label: "Workspaces",
-        loadError: "Could not load workspaces.json."
+        loadError: "Could not load workspaces.json.",
+        sectionTitle: "Workspace access",
+        detecting: "Checking for existing installation...",
+        readyDescription: "Select a workspace to launch ({{count}} detected).",
+        notInstalled: "No installation detected yet.",
+        notInstalledHint: "Run the setup script or refresh once the installation completes to make workspaces available.",
+        refresh: "Refresh",
+        refreshing: "Refreshing...",
+        openButton: "Open workspace",
+        opening: "Opening...",
+        opened: "Workspace {{workspace}} opened in your browser.",
+        openError: "Could not open the workspace. Copy the URL manually if needed.",
+        baseUrl: "Landing served from {{baseUrl}}"
       }
     }
   },
@@ -142,11 +155,24 @@ const resources = {
         terminalLabel: "Terminal"
       },
       statusPanel: {
-        title: "Estado"
+        title: "Estado",
+        placeholder: "Sin actividad por ahora."
       },
       workspaces: {
         label: "Espacios de trabajo",
-        loadError: "No se pudo cargar workspaces.json."
+        loadError: "No se pudo cargar workspaces.json.",
+        sectionTitle: "Acceso a workspaces",
+        detecting: "Buscando instalaciones existentes...",
+        readyDescription: "Selecciona un workspace para abrir ({{count}} detectados).",
+        notInstalled: "Aún no se detecta una instalación.",
+        notInstalledHint: "Ejecuta el asistente o refresca cuando finalice la instalación para habilitar los workspaces.",
+        refresh: "Refrescar",
+        refreshing: "Actualizando...",
+        openButton: "Abrir workspace",
+        opening: "Abriendo...",
+        opened: "Workspace {{workspace}} abierto en tu navegador.",
+        openError: "No se pudo abrir el workspace. Copia la URL manualmente si es necesario.",
+        baseUrl: "Portada servida desde {{baseUrl}}"
       }
     }
   }

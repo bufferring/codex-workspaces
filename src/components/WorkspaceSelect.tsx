@@ -1,36 +1,147 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { checkInstallState, hasTauriBridge, type InstallDetectionResult } from "../lib/tauri";
 
 export type WorkspaceConfig = {
   id: string;
   label: string;
+  href: string;
 };
 
-export type WorkspacesJson = {
+export type WorkspaceDetection = {
+  installed: boolean;
   baseUrl: string;
   workspaces: WorkspaceConfig[];
 };
 
-export function useWorkspaceConfig() {
-  const [config, setConfig] = useState<WorkspacesJson | null>(null);
-  const [error, setError] = useState<string | null>(null);
+type DetectionSource = "tauri" | "static" | "unknown";
 
-  useEffect(() => {
-    fetch("/workspaces.json", { cache: "no-store" })
-      .then(async (res) => {
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-        const data = (await res.json()) as WorkspacesJson;
-        setConfig(data);
-      })
-      .catch((err) => {
-        console.error("Failed to load workspaces.json", err);
+function normalizeBaseUrl(candidate?: string | null): string {
+  const fallback = "http://127.0.0.1";
+  if (!candidate) {
+    return fallback;
+  }
+  const trimmed = candidate.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+  return trimmed.replace(/\/+$/, "");
+}
+
+function buildHref(segment: string): string {
+  const trimmed = segment.trim().replace(/^\/+/, "").replace(/\/+$/, "");
+  if (!trimmed) {
+    return "/";
+  }
+  return `/${trimmed}/`;
+}
+
+function fromTauriResult(raw: InstallDetectionResult): WorkspaceDetection {
+  return {
+    installed: raw.installed,
+    baseUrl: normalizeBaseUrl(raw.baseUrl),
+    workspaces: raw.workspaces.map((workspace) => ({
+      id: workspace.id,
+      label: workspace.label,
+      href: buildHref(workspace.href)
+    }))
+  };
+}
+
+function fromStaticConfig(fallback: { baseUrl?: string; workspaces?: Array<{ id: string; label?: string }> }): WorkspaceDetection {
+  const workspaces = (fallback.workspaces ?? [])
+    .filter((workspace) => Boolean(workspace.id))
+    .map((workspace, index) => ({
+      id: workspace.id,
+      label: workspace.label ?? `Workspace ${index + 1}`,
+      href: buildHref(workspace.id)
+    }));
+
+  return {
+    installed: workspaces.length > 0,
+    baseUrl: normalizeBaseUrl(fallback.baseUrl),
+    workspaces
+  };
+}
+
+export function useWorkspaceConfig() {
+  const [config, setConfig] = useState<WorkspaceDetection | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [source, setSource] = useState<DetectionSource>("unknown");
+
+  const fetchConfig = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    if (hasTauriBridge()) {
+      try {
+        const detection = await checkInstallState();
+        setConfig(fromTauriResult(detection));
+        setSource("tauri");
+      } catch (err) {
+        console.error("Failed to detect Codex installation", err);
         setError("workspaces.loadError");
-      });
+        setConfig(null);
+        setSource("tauri");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    try {
+      const response = await fetch("/workspaces.json", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const fallback = (await response.json()) as { baseUrl?: string; workspaces?: Array<{ id: string; label?: string }> };
+      setConfig(fromStaticConfig(fallback));
+      setSource("static");
+    } catch (err) {
+      console.error("Failed to load workspaces.json", err);
+      setError("workspaces.loadError");
+      setConfig(null);
+      setSource("unknown");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { config, error };
+  useEffect(() => {
+    void fetchConfig();
+  }, [fetchConfig]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (loading) {
+      return;
+    }
+
+    if (config?.installed) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void fetchConfig();
+    }, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [config?.installed, fetchConfig, loading]);
+
+  return {
+    config,
+    error,
+    installed: config?.installed ?? false,
+    loading,
+    refresh: fetchConfig,
+    source
+  };
 }
 
 export type WorkspaceSelectProps = {
